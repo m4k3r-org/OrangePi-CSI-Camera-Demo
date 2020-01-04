@@ -164,13 +164,13 @@ int main(int argc, char *argv[]) {
 	struct v4l2_format fmt;
 	char fourcc[8];
 	char opt,*c;
-	int index, ret;
+	int index, ret=7;
 	input = 0;
 	count = 4;
 	device_path = default_device;
 	pix_format = calloc(1, 5);
 	memcpy(pix_format,default_pix_format,4);
-	while (opt != -1) {
+	do{
 		opt = getopt_long(argc, argv, short_opt, long_opt, &index);
 		if (opt != -1)
 			switch (opt) {
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
 				print_help(argv[0]);
 				exit(0);
 			}
-	}
+	}while (ret--!=0) ;
 	if (width == 0)
 		width = 800;
 	if (height == 0)
