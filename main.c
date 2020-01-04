@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
 	memcpy(pix_format,default_pix_format,4);
 	do{
 		opt = getopt_long(argc, argv, short_opt, long_opt, &index);
-		if (opt != -1)
+		if (opt != -1 && opt!= 255)
 			switch (opt) {
 			case 'd':
 				device_path = calloc(1, strlen(optarg));
@@ -252,6 +252,6 @@ int main(int argc, char *argv[]) {
 	printf("\e[1;34mCapture %d images\e[0m\n ",count);
 	get_image_mmap(fd, fmt.fmt.pix.width, fmt.fmt.pix.height);
 	close(fd);
-
+	return 0;
 }
 
