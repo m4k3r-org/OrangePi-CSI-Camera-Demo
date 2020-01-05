@@ -244,9 +244,9 @@ int main(int argc, char *argv[]) {
 	c=&fmt.fmt.pix.pixelformat;
 	memcpy(pix_format,c,4);
 
-	//set the camera capture settings.
+	//set the camera capture format settings.
 	xioctl(fd, VIDIOC_S_FMT, &fmt);
-	printf("\e[1;33mDevice:%s\n",device_path);
+	printf("\e[1;31mDevice:%s\n",device_path);
 	printf("VIDIOC_S_FMT:%4dx%4d\t|Pix-format:%s\t|Image Size:%d Byte\e[0m\n", fmt.fmt.pix.width,
 			fmt.fmt.pix.height, pix_format,fmt.fmt.pix.sizeimage);
 	if(access("image",F_OK)!=0)
