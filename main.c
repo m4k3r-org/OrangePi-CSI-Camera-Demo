@@ -65,6 +65,7 @@ static int get_image_mmap(int fd, int w, int h) {
 	struct v4l2_requestbuffers req;
 	FILE *image;
 	Frame_buf *frm_buf = malloc(4 * sizeof(Frame_buf));
+	void *temp;
 	int i = 0, index;
 	unsigned char *argb = NULL, filename[256];
 
@@ -90,7 +91,7 @@ static int get_image_mmap(int fd, int w, int h) {
 			return -1;
 		}
 	}
-
+	temp=malloc(frm_buf[0].len);
 	xioctl(fd, VIDIOC_STREAMON, &type);
 
 	for (i = 0; i < 4; i++) {
@@ -108,20 +109,26 @@ static int get_image_mmap(int fd, int w, int h) {
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		xioctl(fd, VIDIOC_DQBUF, &buf);
+		//copy the image to a temp buffer since the image data can be read only once times.
+		memcpy(temp,frm_buf[index].offset,buf.bytesused);
 
 		sprintf(filename, "image.%02d.%s\0", i, pix_format);
 		image = fopen(filename, "w+");
-		fwrite(frm_buf[index].offset, buf.bytesused, 1, image);
+		//fwrite(frm_buf[index].offset, buf.bytesused, 1, image);
+		fwrite(temp, buf.bytesused, 1, image);
 		fclose(image);
 		argb=NULL;
 		if (strncmp(pix_format, default_pix_format, 4) == 0) {
-			argb = yu12_to_argb(frm_buf[index].offset, w, h, 255);
+			//argb = yu12_to_argb(frm_buf[index].offset, w, h, 255);
+			argb = yu12_to_argb(temp, w, h, 255);
 		}
 		if (strncmp(pix_format, "YUYV\0", 4) == 0) {
-			argb = yuyv_to_argb(frm_buf[index].offset, w, h, 255);
+			//argb = yuyv_to_argb(frm_buf[index].offset, w, h, 255);
+			argb = yuyv_to_argb(temp, w, h, 255);
 		}
 		if (strncmp(pix_format, "422P\0", 4) == 0) {
-			argb = yuv422p_to_argb(frm_buf[index].offset, w, h, 255);
+			//argb = yuv422p_to_argb(frm_buf[index].offset, w, h, 255);
+			argb = yuv422p_to_argb(temp, w, h, 255);
 		}
 		sprintf(filename, "image.%02d.png\0", i);
 		write_image_to_png(filename, argb);
@@ -133,6 +140,7 @@ static int get_image_mmap(int fd, int w, int h) {
 	for (i = 0; i < 4; i++) {
 		munmap(frm_buf[i].offset, frm_buf[i].len);
 	}
+	free(temp);
 	return 0;
 }
 
@@ -207,7 +215,7 @@ int main(int argc, char *argv[]) {
 				print_help(argv[0]);
 				exit(0);
 			}
-	}while (ret--!=0) ;
+	}while (ret--!=0 && opt != -1 && opt!= 255) ;
 	if (width == 0)
 		width = 800;
 	if (height == 0)
