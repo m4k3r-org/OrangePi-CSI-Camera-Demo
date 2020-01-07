@@ -3,8 +3,9 @@
  *
  *  Created on: 2019年12月12日
  *      Author: tom
+ *      https://github.com/macos2/MyCamera
+ *		https://gitee.com/macos2/MyCamera
  */
-
 #include "video_unit.h"
 
 int yuv_to_argb(unsigned char y, unsigned char cb, unsigned char cr, int alpha) {
