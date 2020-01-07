@@ -286,9 +286,11 @@ int main(int argc, char *argv[]) {
 	}else{
 		perror("chdir 'image' Fail,capture images are saved in current directory");
 	}
-
+	//start capture operations function.
+	//运行拍摄相关操作的函数。
 	printf("\e[1;34mCapture %d images\e[0m\n ",count);
 	get_image_mmap(fd, fmt.fmt.pix.width, fmt.fmt.pix.height);
+
 	close(fd);
 	return 0;
 }
