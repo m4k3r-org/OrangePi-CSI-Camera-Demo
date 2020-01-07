@@ -111,15 +111,23 @@ static int get_image_mmap(int fd, int w, int h) {
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		xioctl(fd, VIDIOC_DQBUF, &buf);
-		//copy the image to a temp buffer since the image data can be read only once times.
+		//copy the image to a temp buffer, or fwrite all the date to a file at once.
+		//because the image data can be read only once times，@sunxi-vfe
+		//复制数据至一临时内存，或一次性fwrite把数据写进文件里
+		//因为在sunxi-vfe，图片数据只能读取一次。
 		memcpy(temp,frm_buf[index].offset,buf.bytesused);
 
+		//write data to file.
+		//把数据写进文件。
 		sprintf(filename, "image.%02d.%s\0", i, pix_format);
 		image = fopen(filename, "w+");
 		//fwrite(frm_buf[index].offset, buf.bytesused, 1, image);
 		fwrite(temp, buf.bytesused, 1, image);
 		fclose(image);
 		argb=NULL;
+
+		//convert data to argb format to write png file with cairo.
+		//转换成ARGB格式，用cairo库输出png图像文件。
 		if (strncmp(pix_format, default_pix_format, 4) == 0) {
 			//argb = yu12_to_argb(frm_buf[index].offset, w, h, 255);
 			argb = yu12_to_argb(temp, w, h, 255);
@@ -135,9 +143,14 @@ static int get_image_mmap(int fd, int w, int h) {
 		sprintf(filename, "image.%02d.png\0", i);
 		write_image_to_png(filename, argb);
 
+		// VIDIOC_QBUF for continue capture image.
+		// VIDIOC_QBUF 归队让摄像头继续拍摄。
 		xioctl(fd, VIDIOC_QBUF, &buf);
 		printf("\t\e[1;32m%2d images captured\e[0m\n",i+1);
 	}
+
+	// VIDIOC_STREAMOFF first beforce munmap operations,or the system run with some problem.
+	// 先VIDIOC_STREAMOFF后munmap解除映射，否则系统运行会有奇怪的问题发生。
 	xioctl(fd, VIDIOC_STREAMOFF, &type);
 	for (i = 0; i < 4; i++) {
 		munmap(frm_buf[i].offset, frm_buf[i].len);
@@ -223,34 +236,49 @@ int main(int argc, char *argv[]) {
 	if (height == 0)
 		height = 600;
 	//carefully,nonblock open the device.
+	//注意这是以nonblock方式打开设备。
 	int fd = open(device_path, O_RDWR | O_NONBLOCK, 0);
 	if (fd < 0) {
 		perror("Could not open the device");
 		return -1;
 	}
 	//Select the O input channel of the Camera.
+	//设置摄像头“0”输入通道。
 	xioctl(fd, VIDIOC_S_INPUT, &input);
 
 	memset(&fmt, 0, sizeof(fmt));
 	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	fmt.fmt.pix.width = width; //Capture Image Width
-	fmt.fmt.pix.height = height; //Capture Image Height
+	fmt.fmt.pix.width = width; //Capture Image Width，宽
+	fmt.fmt.pix.height = height; //Capture Image Height，高
 	fmt.fmt.pix.pixelformat = v4l2_fourcc(pix_format[0], pix_format[1],
-			pix_format[2], pix_format[3]); //Set Pix Format.
+			pix_format[2], pix_format[3]); //Set Pix Format，像素格式
 	fmt.fmt.pix.field = V4L2_FIELD_NONE;
 
 	//Let's the camera driver to correct the error settings of the fmt struct.
+	//让摄像头驱动更正“fmt”数据结构中的错误设置。
 	xioctl(fd, VIDIOC_TRY_FMT, &fmt);
+
+	//Becare，some settings could be modified,update the global values.
+	//注意，某些设置可能被更改，更新全局变量。
 	width=fmt.fmt.pix.width;
 	height=fmt.fmt.pix.height;
 	c=&fmt.fmt.pix.pixelformat;
 	memcpy(pix_format,c,4);
 
 	//set the camera capture format settings.
+	//正式设置拍摄参数。
 	xioctl(fd, VIDIOC_S_FMT, &fmt);
+
+	//print the current settings.
+	//向用户提示拍摄的参数。
 	printf("\e[1;31mDevice:%s\n",device_path);
 	printf("VIDIOC_S_FMT:%4dx%4d\t|Pix-format:%s\t|Image Size:%d Byte\e[0m\n", fmt.fmt.pix.width,
 			fmt.fmt.pix.height, pix_format,fmt.fmt.pix.sizeimage);
+
+	//create sub directory to save image files.
+	//or save in the current working directory if fail.
+	//创建子目录保存图像文件。
+	//若创建失败，则把文件保存在当前目录下。
 	if(access("image",F_OK)!=0)
 	mkdir("image",S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH);
 	if(access("image",F_OK)==0){
