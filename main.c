@@ -146,9 +146,10 @@ static int get_image_mmap(int fd, int w, int h) {
 		// VIDIOC_QBUF for continue capture image.
 		// VIDIOC_QBUF 归队让摄像头继续拍摄。
 		xioctl(fd, VIDIOC_QBUF, &buf);
-		printf("\t\e[1;32m%2d images captured\e[0m\n",i+1);
+		printf("\e[s\e[K\t\e[1;32m%2d images captured\e[0m\e[u",i+1);
+		fflush(stdout);
 	}
-
+	printf("\n");
 	// VIDIOC_STREAMOFF first beforce munmap operations,or the system run with some problem.
 	// 先VIDIOC_STREAMOFF后munmap解除映射，否则系统运行会有奇怪的问题发生。
 	xioctl(fd, VIDIOC_STREAMOFF, &type);
